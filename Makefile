@@ -4,7 +4,11 @@ libimu.dylib: imu.c
 run: libimu.dylib
 	uv run compass.py
 
+# redraw assets/ after editing make_assets.py
+assets:
+	uv run make_assets.py
+
 clean:
 	rm -f libimu.dylib
 
-.PHONY: run clean
+.PHONY: run assets clean

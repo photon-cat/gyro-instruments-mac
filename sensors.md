@@ -41,10 +41,7 @@ Machine: MacBookPro18,1 (16" M1 Pro, 2021), macOS 26.6.2. None of the sensors be
 - There are about 2050 keys, readable through the AppleSMC user client (selector 2).
 - Useful keys: `MSLD` lid switch, `F0Ac`/`F1Ac` fan RPM (float), plus many temperature, voltage and current keys.
 
-## X-Plane instrument art
-- The instrument art used here is X-Plane 12's Cessna 172 SP: `Aircraft/Laminar Research/Cessna 172 SP/objects/instruments/{directional_gyro,horizon}/`.
-- The textures are 512×512 DDS files with no alpha. Each part's outline comes from its OBJ mesh, so the OBJ's UV triangles make a clean alpha mask.
-- Both dials are centred at (184, 184), with a card radius of 147 and a bezel radius of 184.
-- The DG heading bug is at (318, 22, 38, 35). The AI pitch ladder oval is at (86, 131, 197, 106), spaced 1.65 px per degree.
-- The horizon texture also hides an upside-down pitch ladder with Santa on it.
-- The art belongs to Laminar Research. It's loaded from the local install and cached in `~/.cache/macbook-compass`, never committed.
+## Instrument art
+- The art in `assets/` is original. `make_assets.py` draws it as one PNG layer per moving part, and `assets.json` holds the geometry.
+- An earlier version used X-Plane 12's Cessna 172 textures. It was dropped because that art is Laminar Research's and can't be redistributed.
+- Useful if revisiting it: those textures have no alpha channel, so their OBJ UV triangles give each part's cut-out.

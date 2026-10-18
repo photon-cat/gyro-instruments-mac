@@ -1,0 +1,24 @@
+{
+  "box": 392,
+  "card_r": 147,
+  "knob_r": 33,
+  "knobs": {
+    "dg_card": [
+      -158,
+      158
+    ],
+    "dg_bug": [
+      158,
+      158
+    ],
+    "ai_adjust": [
+      -158,
+      158
+    ]
+  },
+  "ai": {
+    "px_per_deg": 2.5,
+    "horizon_row": 372,
+    "max_adjust": 5
+  }
+}

@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["pygame-ce", "pillow"]
+# dependencies = ["pygame-ce"]
 # ///
 """Attitude indicator + directional gyro driven by the MacBook's gyro and accelerometer.
 
@@ -22,7 +22,7 @@ import pygame
 import sensors
 from attitude_indicator import AttitudeIndicator
 from directional_gyro import DirectionalGyro
-from xplane import BOX, CARD_R, KNOB_R
+from art import BOX, CARD_R, KNOB_R
 
 W, H = 2 * BOX + 3 * 28, 700
 AI_CENTER = (28 + BOX // 2, 150 + BOX // 2)
