@@ -1,15 +1,10 @@
-CFLAGS = -O2 -Wall
-FRAMEWORKS = -framework IOKit -framework CoreFoundation
+libimu.dylib: imu.c
+	clang -O2 -Wall -dynamiclib -framework IOKit -framework CoreFoundation -o $@ $<
 
-all: dgyro
-
-dgyro: dgyro.c
-	clang $(CFLAGS) $(FRAMEWORKS) -o $@ $<
-
-run: dgyro
+run: libimu.dylib
 	uv run compass.py
 
 clean:
-	rm -f dgyro
+	rm -f libimu.dylib
 
-.PHONY: all run clean
+.PHONY: run clean

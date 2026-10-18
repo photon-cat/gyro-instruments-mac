@@ -1,7 +1,5 @@
 # build outputs
-dgyro
-lidlog
-*.dylib
+libimu.dylib
 __pycache__/
 
 # sensor logs
