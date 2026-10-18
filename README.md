@@ -1,6 +1,8 @@
-# macbook-compass
+# gyro-instruments-mac
 
-An attitude indicator, directional gyro, turn coordinator and per-axis G meters driven by the MacBook's own motion sensor.
+Turns your MacBook into half of a six-pack.
+
+An attitude indicator, directional gyro, turn-and-slip indicator and per-axis G meters, all driven by the MacBook's own motion sensor.
 
 ## Reading the IMU
 
