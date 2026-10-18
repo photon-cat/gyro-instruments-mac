@@ -1,0 +1,8 @@
+# build outputs
+dgyro
+lidlog
+*.dylib
+__pycache__/
+
+# sensor logs
+data/
