@@ -7,6 +7,8 @@ gyro bias and integrates the rates:
     roll     rotation about y
 Pitch and roll are gently pulled toward the accelerometer's gravity direction
 so they don't drift; heading has no such reference (there's no magnetometer).
+The inclinometer ball is the accelerometer's sideways pull: it settles where
+apparent gravity (gravity plus any sideways acceleration) points.
 """
 
 import atexit
@@ -25,6 +27,8 @@ ROLL_SIGN = 1
 
 CAL_SECS = 3          # bias calibration time, keep still
 GRAVITY_TAU = 2.0     # seconds for pitch/roll to settle onto the accelerometer
+BALL_TAU = 0.15       # inclinometer ball damping, seconds
+RATE_TAU = 0.3        # turn rate smoothing, seconds
 MOVED_DPS = 0.2       # gyro noise above this during calibration means it moved
 
 
@@ -45,11 +49,12 @@ class Imu:
         atexit.register(self.lib.imu_stop)  # streaming is a global driver setting: always turn it off
         self.buffer = (Sample * 512)()
         self.heading = self.pitch = self.roll = 0.0  # degrees
-        self.turn_rate = 0.0                          # deg/s, positive = heading increasing
+        self.turn_rate = 0.0                          # deg/s, positive = heading increasing (smoothed)
+        self.ball = 0.0                               # inclinometer ball, deg along its tube, + = right
         self.temp = 0.0                               # IMU temperature, degC
         self.gravity = (0.0, 0.0, -1.0)               # latest accelerometer reading, g
         self.bias = (0.0, 0.0, 0.0)
-        self.last_t = None
+        self.last_t = self.last_accel_t = None
         self.calibrate()
 
     def calibrate(self):
@@ -66,7 +71,7 @@ class Imu:
         n = self.lib.imu_read(self.buffer, len(self.buffer))
         for s in self.buffer[:n]:
             if s.sensor == ACCEL:
-                self.gravity = (s.x, s.y, s.z)
+                self._accel(s)
             elif self.calibrating:
                 self.cal_samples.append((s.x, s.y, s.z))
             else:
@@ -90,14 +95,23 @@ class Imu:
         return (PITCH_SIGN * math.degrees(math.atan2(-ay, -az)),
                 ROLL_SIGN * math.degrees(math.atan2(ax, -az)))
 
+    def _accel(self, s):
+        dt = s.t - self.last_accel_t if self.last_accel_t else 0.0
+        self.last_accel_t = s.t
+        self.gravity = (s.x, s.y, s.z)
+        # A ball in a curved tube rests where the tube is perpendicular to apparent gravity
+        target = ROLL_SIGN * math.degrees(math.atan2(s.x, -s.z))
+        self.ball += min(1.0, dt / BALL_TAU) * (target - self.ball)
+
     def _integrate(self, s):
         dt = s.t - self.last_t if self.last_t else 0.0
         self.last_t = s.t
         if dt > 0.1:  # gap (sleep, stall): don't integrate across it
             dt = 0.0
         wx, wy, wz = (s.x - self.bias[0], s.y - self.bias[1], s.z - self.bias[2])
-        self.turn_rate = HEADING_SIGN * wz
-        self.heading = (self.heading + self.turn_rate * dt) % 360
+        rate = HEADING_SIGN * wz
+        self.heading = (self.heading + rate * dt) % 360
+        self.turn_rate += dt / (RATE_TAU + dt) * (rate - self.turn_rate)
         self.pitch += PITCH_SIGN * wx * dt
         self.roll += ROLL_SIGN * wy * dt
 

@@ -18,7 +18,15 @@
   },
   "ai": {
     "px_per_deg": 2.5,
-    "horizon_row": 372,
-    "max_adjust": 5
+    "horizon_row": 372
+  },
+  "tc": {
+    "std_rate_bank": 20,
+    "tube_c": [
+      0,
+      -120
+    ],
+    "tube_r": 222,
+    "ball_max": 16
   }
 }

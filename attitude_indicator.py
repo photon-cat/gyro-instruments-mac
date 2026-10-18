@@ -1,7 +1,7 @@
 """Attitude indicator.
 
 Sensor inputs: pitch, roll
-User input:    turn_adjust(+/-deg)  adjust knob, moves the miniature plane up/down
+(The adjust knob and miniature plane are fixed for now.)
 """
 
 import pygame
@@ -10,18 +10,11 @@ import art
 
 
 class AttitudeIndicator:
-    KNOBS = {"adjust": art.GEOMETRY["knobs"]["ai_adjust"]}
-
     def __init__(self):
         g = art.GEOMETRY["ai"]
-        self.px_per_deg, self.horizon_row, self.max_adjust = g["px_per_deg"], g["horizon_row"], g["max_adjust"]
+        self.px_per_deg, self.horizon_row = g["px_per_deg"], g["horizon_row"]
         self.pitch = self.roll = 0.0  # from the sensors
-        self.adjust = 0.0             # miniature plane offset, degrees (up = positive)
-        self.case, self.tape, self.card, self.plane, self.face = map(
-            art.load, ("case", "ai_tape", "ai_card", "ai_plane", "ai_face"))
-
-    def turn_adjust(self, degrees):
-        self.adjust = max(-self.max_adjust, min(self.max_adjust, self.adjust + degrees))
+        self.case, self.tape, self.card, self.face = map(art.load, ("case", "ai_tape", "ai_card", "ai_face"))
 
     def draw(self, screen, center):
         box = self.case.get_rect(center=center)
@@ -39,5 +32,4 @@ class AttitudeIndicator:
         # Banking right turns the horizon counter-clockwise on screen
         ball = pygame.transform.rotozoom(ball, self.roll, 1)
         screen.blit(ball, ball.get_rect(center=center))
-        screen.blit(self.plane, box.move(0, -round(self.adjust * self.px_per_deg)))
-        screen.blit(self.face, box)
+        screen.blit(self.face, box)  # miniature plane, shroud, bank pointer, bezel

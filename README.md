@@ -1,6 +1,6 @@
 # macbook-compass
 
-A directional gyro and attitude indicator driven by the MacBook's own motion sensor.
+An attitude indicator, directional gyro and turn coordinator driven by the MacBook's own motion sensor.
 
 ## Reading the IMU
 
@@ -28,6 +28,10 @@ $$
   - The gravity angles are pitch = `atan2(-ay, -az)` and roll = `atan2(ax, -az)`.
   - Yaw has no gravity reference, so it skips this term and drifts slowly. Recalibrate with `C`, or realign the card.
 
+The turn coordinator uses two more values:
+- **Turn rate:** the yaw rate $s\,(\omega_z - b)$, smoothed over 0.3 s. The plane symbol reaches the L/R mark at standard rate, 3°/s.
+- **Ball:** the inclinometer ball rests where apparent gravity (gravity plus any sideways acceleration) holds it in its curved tube. So its angle along the tube is `atan2(ax, -az)` from the accelerometer, damped over 0.15 s.
+
 ## Requirements
 
 - An Apple Silicon MacBook (developed on a 16" M1 Pro, MacBookPro18,1) running macOS.
@@ -41,22 +45,21 @@ $$
 make run
 ```
 
-| Control | Keys | Or scroll over |
+| Control | Mouse | Keys |
 |---|---|---|
-| Turn the DG card | ← / → | PUSH knob |
-| Move the heading bug | `[` / `]` | HDG knob |
-| Move the miniature plane | ↑ / ↓ | AI knob |
-| Recalibrate gyro bias | `C` | |
-| Quit | `Q` | |
+| Set heading (turn the DG card) | Click the arrows on the HDG knob (hold to repeat), or scroll over it | ← / → |
+| Move the heading bug | Click the arrows on the BUG knob, or scroll over it | `[` / `]` |
+| Recalibrate gyro bias | | `C` |
+| Quit | | `Q` |
 
-Hold Shift for 10° steps.
+Hold Shift for 10° steps. The attitude indicator's pitch scale is fixed for now.
 
 ## Files
 
 | File | Role |
 |---|---|
 | `imu.c` | Streams the gyro and accelerometer: `imu_start`, `imu_read`, `imu_stop` |
-| `sensors.py` | Bias calibration and integration into heading, pitch and roll |
-| `directional_gyro.py`, `attitude_indicator.py` | The two instruments (sensor inputs and knob inputs) |
+| `sensors.py` | Bias calibration and integration into heading, pitch and roll, plus turn rate and the ball |
+| `attitude_indicator.py`, `directional_gyro.py`, `turn_coordinator.py` | The instruments: sensor inputs, plus the DG's knob inputs |
 | `compass.py` | Window, layout, input |
 | `art.py`, `assets/`, `make_assets.py` | Instrument art: loader, PNG layers and the script that draws them (`make assets`) |

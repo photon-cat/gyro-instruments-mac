@@ -8,13 +8,17 @@ Each part is its own layer, centred on the dial, so the instruments just rotate,
 slide and stack them. Drawn at 4x and smooth-scaled down for antialiasing.
 
     case.png      instrument case (shared)                       392 x 392
+    knob.png      knob grip with index mark, rotates when turned  66 x 66
     dg_card.png   compass card, rotates with heading              294 x 294
     dg_bug.png    heading bug at the top, rotates                 294 x 294
-    dg_face.png   lubber line, plane, bezel, knobs                392 x 392
+    dg_face.png   lubber line, plane, bezel, knob arrows          392 x 392
     ai_tape.png   sky/ground + pitch ladder, slides with pitch    294 x (294 + 180 * PX_PER_DEG)
     ai_card.png   bank card with a hole for the tape, rolls       294 x 294
-    ai_plane.png  miniature plane, moved by the adjust knob       392 x 392
-    ai_face.png   bank pointer, shroud, bezel, knob               392 x 392
+    ai_face.png   miniature plane, shroud, bank pointer, bezel    392 x 392
+    tc_face.png   turn coordinator dial, marks and ball tube      392 x 392
+    tc_plane.png  rear-view plane, banks with turn rate           294 x 294
+    tc_ball.png   inclinometer ball                               18 x 18
+    tc_glass.png  ball reference lines and bezel                  392 x 392
 
 Run:  uv run make_assets.py
 """
@@ -35,6 +39,9 @@ HOLE_R = 104          # bank card hole the pitch tape shows through
 PX_PER_DEG = 2.5      # pitch tape scale
 TAPE_H = 2 * CARD_R + round(180 * PX_PER_DEG)
 KNOBS = {"dg_card": (-158, 158), "dg_bug": (158, 158), "ai_adjust": (-158, 158)}
+STD_RATE_BANK = 20    # TC plane bank at standard rate (3 deg/s), where the L/R marks sit
+TUBE_C, TUBE_R = (0, -120), 222   # TC ball tube: arc centre (offset from dial centre) and radius
+BALL_R, BALL_MAX = 9, 16          # ball radius, and how far (deg along the arc) it can roll
 
 WHITE = (240, 240, 236)
 BLACK = (16, 16, 18)
@@ -117,13 +124,32 @@ def bezel(surf):
     circle(surf, (6, 6, 8), C, CARD_R + 4, 5)      # inner shadow
 
 
-def knob(surf, offset, text="", color=WHITE):
+def knob():
+    """Knob grip: knurled rim and an index mark. The instruments rotate it as it's turned."""
+    surf = canvas(2 * KNOB_R, 2 * KNOB_R)
+    at = (KNOB_R, KNOB_R)
+    circle(surf, (20, 20, 22), at, KNOB_R)
+    circle(surf, (48, 48, 52), at, KNOB_R - 4)
+    for deg in range(0, 360, 12):
+        line(surf, (70, 70, 74), polar(at, KNOB_R - 1, deg), polar(at, KNOB_R - 4, deg), 1.5)
+    line(surf, WHITE, polar(at, KNOB_R - 5, 0), polar(at, KNOB_R - 13, 0), 3)
+    save(surf, "knob.png")
+
+
+def knob_arrows(surf, offset, text, color):
+    """Fixed label and turn arrows drawn over a knob: click the left or right half to turn it."""
+    x, y = C[0] + offset[0], C[1] + offset[1]
+    label(surf, text, 15, color, (x, y + 7))
+    for side in (-1, 1):
+        tip = x + side * 25
+        poly(surf, WHITE, [(tip, y), (tip - side * 8, y - 6), (tip - side * 8, y + 6)])
+
+
+def static_knob(surf, offset):
     at = (C[0] + offset[0], C[1] + offset[1])
     circle(surf, (20, 20, 22), at, KNOB_R)
-    circle(surf, (48, 48, 52), at, KNOB_R - 3)
-    circle(surf, (70, 70, 74), at, KNOB_R - 3, 2)
-    if text:
-        label(surf, text, 18, color, at)
+    circle(surf, (48, 48, 52), at, KNOB_R - 4)
+    line(surf, WHITE, (at[0] - 14, at[1]), (at[0] + 14, at[1]), 3)
 
 
 def case():
@@ -160,17 +186,16 @@ def dg_face():
     surf = canvas(BOX, BOX)
     bezel(surf)  # first: it's a filled disc with the window cut out
     x, y = C
-    # Lubber pointer: narrow at the card edge, widest low down, sharp tip above the nose
-    poly(surf, WHITE, [(x - 2, y - CARD_R + 6), (x + 2, y - CARD_R + 6), (x + 9, y - 58), (x, y - 31), (x - 9, y - 58)])
+    # Lubber pointer: narrow at the card edge, widest low down, long sharp taper to a point above the nose
+    poly(surf, WHITE, [(x - 1.5, y - CARD_R + 6), (x + 1.5, y - CARD_R + 6), (x + 7.5, y - 80), (x, y - 31), (x - 7.5, y - 80)])
     # Plane silhouette, all sharp corners: pointed nose, square wingtips, tapered fuselage
     poly(surf, WHITE, [(x, y - 27), (x + 3, y - 23), (x + 6, y - 13), (x + 6, y + 8),
                        (x + 4, y + 46), (x - 4, y + 46), (x - 6, y + 8), (x - 6, y - 13), (x - 3, y - 23)])
     poly(surf, WHITE, [(x - 52, y - 8), (x + 52, y - 8), (x + 52, y + 6), (x - 52, y + 6)])        # wings
     poly(surf, WHITE, [(x - 15, y + 33), (x + 15, y + 33), (x + 18, y + 44), (x - 18, y + 44)])    # tailplane
-    label(surf, "VACUUM", 19, WHITE, (x, y + 64))
     line(surf, WHITE, (x, y + 76), (x, y + CARD_R - 2), 2)                                        # lubber line, bottom
-    knob(surf, KNOBS["dg_card"], "PUSH")
-    knob(surf, KNOBS["dg_bug"], "HDG", ORANGE)
+    knob_arrows(surf, KNOBS["dg_card"], "HDG", WHITE)
+    knob_arrows(surf, KNOBS["dg_bug"], "BUG", ORANGE)
     save(surf, "dg_face.png")
 
 
@@ -209,22 +234,17 @@ def ai_card():
     save(surf, "ai_card.png")
 
 
-def ai_plane():
-    surf = canvas(BOX, BOX)
-    x, y = C
-    for side in (-1, 1):  # Y-shaped stem; long enough to stay in the shroud when adjusted
-        line(surf, STEM, (x + side * 28, y + 2), (x, y + 42), 5)
-    line(surf, STEM, (x, y + 40), (x, y + 92), 7)
-    rect(surf, ORANGE, (x - 96, y - 3, 68, 7))
-    rect(surf, ORANGE, (x + 28, y - 3, 68, 7))
-    circle(surf, ORANGE, (x, y), 5)
-    save(surf, "ai_plane.png")
-
-
 def ai_face():
     surf = canvas(BOX, BOX)
     bezel(surf)
     x, y = C
+    # miniature plane (fixed for now): Y-shaped stem into the shroud, orange wing bars
+    for side in (-1, 1):
+        line(surf, STEM, (x + side * 28, y + 2), (x, y + 42), 5)
+    line(surf, STEM, (x, y + 40), (x, y + 80), 7)
+    rect(surf, ORANGE, (x - 96, y - 3, 68, 7))
+    rect(surf, ORANGE, (x + 28, y - 3, 68, 7))
+    circle(surf, ORANGE, (x, y), 5)
     shroud = canvas(BOX, BOX)
     rect(shroud, SHROUD, (0, y + 100, BOX, BOX))
     poly(shroud, SHROUD, [(x - 26, y + 66), (x + 26, y + 66), (x + 58, y + 101), (x - 58, y + 101)])
@@ -233,18 +253,71 @@ def ai_face():
     surf.blit(shroud, (0, 0))
     label(surf, "ATTITUDE", 16, (190, 190, 196), (x, y + 116))
     poly(surf, ORANGE, [(x - 11, y - CARD_R - 2), (x + 11, y - CARD_R - 2), (x, y - CARD_R + 20)])  # bank pointer
-    knob(surf, KNOBS["ai_adjust"])
-    line(surf, WHITE, (C[0] - 158 - 14, C[1] + 158), (C[0] - 158 + 14, C[1] + 158), 3)  # knob index
+    static_knob(surf, KNOBS["ai_adjust"])
     save(surf, "ai_face.png")
+
+
+# ---- turn coordinator
+
+def tube_point(deg, r):
+    """Point on the ball tube's arc, deg from straight down (+ = right)."""
+    a = math.radians(deg)
+    return C[0] + TUBE_C[0] + r * math.sin(a), C[1] + TUBE_C[1] + r * math.cos(a)
+
+
+def tc_face():
+    surf = canvas(BOX, BOX)
+    x, y = C
+    circle(surf, BLACK, C, CARD_R)
+    for deg in (90, 90 + STD_RATE_BANK, 270, 270 - STD_RATE_BANK):  # wings level, and standard-rate turn
+        line(surf, WHITE, polar(C, CARD_R - 4, deg), polar(C, CARD_R - 26, deg), 5)
+    label(surf, "L", 30, WHITE, polar(C, CARD_R - 44, 270 - STD_RATE_BANK - 12))
+    label(surf, "R", 30, WHITE, polar(C, CARD_R - 44, 90 + STD_RATE_BANK + 12))
+    label(surf, "TURN COORDINATOR", 17, WHITE, (x, y - 78))
+    label(surf, "2 MIN", 17, WHITE, (x, y + 58))
+    span = BALL_MAX + 4
+    tube = [tube_point(d / 2, TUBE_R + 12) for d in range(-2 * span, 2 * span + 1)]
+    tube += [tube_point(d / 2, TUBE_R - 12) for d in range(2 * span, -2 * span - 1, -1)]
+    poly(surf, (205, 205, 196), tube)
+    save(surf, "tc_face.png")
+
+
+def tc_plane():
+    surf = canvas(2 * CARD_R, 2 * CARD_R)
+    x, y = K
+    poly(surf, WHITE, [(x - 95, y - 3), (x + 95, y - 3), (x + 95, y + 4), (x - 95, y + 4)])  # wings
+    circle(surf, WHITE, (x, y), 11)                                                       # fuselage
+    poly(surf, WHITE, [(x - 3, y - 26), (x + 3, y - 26), (x + 3, y - 8), (x - 3, y - 8)])  # fin
+    poly(surf, WHITE, [(x - 22, y - 13), (x + 22, y - 13), (x + 22, y - 9), (x - 22, y - 9)])  # tailplane
+    save(surf, "tc_plane.png")
+
+
+def tc_ball():
+    surf = canvas(2 * BALL_R, 2 * BALL_R)
+    circle(surf, BLACK, (BALL_R, BALL_R), BALL_R)
+    circle(surf, (80, 80, 84), (BALL_R - 3, BALL_R - 3), 2.5)  # highlight
+    save(surf, "tc_ball.png")
+
+
+def tc_glass():
+    surf = canvas(BOX, BOX)
+    bezel(surf)
+    for side in (-1, 1):  # ball centred between these = coordinated
+        x = C[0] + side * (BALL_R + 2)
+        line(surf, BLACK, (x, tube_point(0, TUBE_R - 12)[1]), (x, tube_point(0, TUBE_R + 12)[1]), 2)
+    save(surf, "tc_glass.png")
 
 
 def main():
     pygame.init()
     OUT.mkdir(exist_ok=True)
-    for draw in (case, dg_card, dg_bug, dg_face, ai_tape, ai_card, ai_plane, ai_face):
+    for old in OUT.glob("*.png"):
+        old.unlink()
+    for draw in (case, knob, dg_card, dg_bug, dg_face, ai_tape, ai_card, ai_face, tc_face, tc_plane, tc_ball, tc_glass):
         draw()
     geometry = {"box": BOX, "card_r": CARD_R, "knob_r": KNOB_R, "knobs": KNOBS,
-                "ai": {"px_per_deg": PX_PER_DEG, "horizon_row": TAPE_H // 2, "max_adjust": 5}}
+                "ai": {"px_per_deg": PX_PER_DEG, "horizon_row": TAPE_H // 2},
+                "tc": {"std_rate_bank": STD_RATE_BANK, "tube_c": TUBE_C, "tube_r": TUBE_R, "ball_max": BALL_MAX}}
     (OUT / "assets.json").write_text(json.dumps(geometry, indent=2) + "\n")
     print(f"wrote {len(list(OUT.glob('*.png')))} layers to {OUT}")
 
