@@ -2,7 +2,9 @@
 
 Turns your MacBook into half of a six-pack.
 
-An attitude indicator, directional gyro, turn-and-slip indicator and per-axis G meters, all driven by the MacBook's own motion sensor.
+An attitude indicator, directional gyro, turn-and-slip indicator and per-axis G meters, all driven by the MacBook's inertial measurement unit (IMU).
+
+![The app: attitude indicator, directional gyro and turn-and-slip indicator, with X/Y/Z G meters below](docs/screenshot.png)
 
 ## Reading the IMU
 
