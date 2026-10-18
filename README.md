@@ -34,38 +34,38 @@ $$
 **Turn rate (turn-and-slip).** Standard rate (3°/s) puts the plane on the L/R mark.
 
 $$
-r = \text{lag}_{0.3\,\text{s}}(\dot\psi)
+r = \text{lag}_{\text{0.3 s}}(\dot\psi)
 $$
 
 **Heading (DG).** There's no magnetometer, so heading has no correction. The HDG knob adds an offset to line it up.
 
 $$
-\psi \leftarrow (\psi + \dot\psi\,\Delta t) \bmod 360°
+\psi \leftarrow (\psi + \dot\psi \Delta t) \bmod 360°
 $$
 
 **Pitch and roll (AI).** First integrate the gyro, then pull the result toward the accelerometer's gravity angles so it doesn't drift. The pull is applied only while $\lVert a\rVert \approx 1$ g.
 
 $$
-\theta^g = s_\theta\operatorname{atan2}(-a_y, -a_z), \qquad
-\phi^g = s_\phi\operatorname{atan2}(a_x, -a_z)
+\theta^g = s_\theta\mathrm{atan2}(-a_y, -a_z), \qquad
+\phi^g = s_\phi\mathrm{atan2}(a_x, -a_z)
 $$
 
 $$
-\theta \leftarrow \theta + \dot\theta\,\Delta t, \qquad
-\theta \leftarrow \theta + \frac{\Delta t}{2\,\text{s} + \Delta t}\left(\theta^g - \theta\right)
+\theta \leftarrow \theta + \dot\theta \Delta t, \qquad
+\theta \leftarrow \theta + \frac{\Delta t}{\text{2 s} + \Delta t}\left(\theta^g - \theta\right)
 \qquad \text{(and the same for } \phi\text{)}
 $$
 
 **Ball (turn-and-slip).** Apparent gravity projected on the X–Z plane, as an angle from straight down, which is where a ball in a curved tube rests. The lag stands in for the damping fluid.
 
 $$
-\beta = \text{lag}_{0.15\,\text{s}}\!\left(s_\phi\operatorname{atan2}(a_x, -a_z)\right)
+\beta = \text{lag}_{\text{0.15 s}}\left(s_\phi\mathrm{atan2}(a_x, -a_z)\right)
 $$
 
 **Acceleration (G meters).** Load factor on each axis: the negated reading, so lying flat shows Z = +1 G. At rest that 1 G is the desk pushing up. Orange tattletales hold the min and max until you click PUSH.
 
 $$
-n_i = \text{lag}_{0.1\,\text{s}}(-a_i), \qquad i \in \{x, y, z\}
+n_i = \text{lag}_{\text{0.1 s}}(-a_i), \qquad i \in \lbrace x, y, z \rbrace
 $$
 
 ## Requirements
