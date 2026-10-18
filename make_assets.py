@@ -160,11 +160,15 @@ def dg_face():
     surf = canvas(BOX, BOX)
     bezel(surf)  # first: it's a filled disc with the window cut out
     x, y = C
-    poly(surf, WHITE, [(x, y - CARD_R + 4), (x + 5, y - 62), (x - 5, y - 62)])  # lubber line, top
-    line(surf, WHITE, (x, y + 96), (x, y + CARD_R - 2), 3)                     # lubber line, bottom
-    rect(surf, WHITE, (x - 5, y - 32, 10, 70), 5)                              # fuselage
-    rect(surf, WHITE, (x - 52, y - 8, 104, 13), 6)                             # wings
-    rect(surf, WHITE, (x - 19, y + 28, 38, 9), 4)                              # tail
+    # Lubber pointer: narrow at the card edge, widest low down, sharp tip above the nose
+    poly(surf, WHITE, [(x - 2, y - CARD_R + 6), (x + 2, y - CARD_R + 6), (x + 9, y - 58), (x, y - 31), (x - 9, y - 58)])
+    # Plane silhouette, all sharp corners: pointed nose, square wingtips, tapered fuselage
+    poly(surf, WHITE, [(x, y - 27), (x + 3, y - 23), (x + 6, y - 13), (x + 6, y + 8),
+                       (x + 4, y + 46), (x - 4, y + 46), (x - 6, y + 8), (x - 6, y - 13), (x - 3, y - 23)])
+    poly(surf, WHITE, [(x - 52, y - 8), (x + 52, y - 8), (x + 52, y + 6), (x - 52, y + 6)])        # wings
+    poly(surf, WHITE, [(x - 15, y + 33), (x + 15, y + 33), (x + 18, y + 44), (x - 18, y + 44)])    # tailplane
+    label(surf, "VACUUM", 19, WHITE, (x, y + 64))
+    line(surf, WHITE, (x, y + 76), (x, y + CARD_R - 2), 2)                                        # lubber line, bottom
     knob(surf, KNOBS["dg_card"], "PUSH")
     knob(surf, KNOBS["dg_bug"], "HDG", ORANGE)
     save(surf, "dg_face.png")
@@ -211,8 +215,8 @@ def ai_plane():
     for side in (-1, 1):  # Y-shaped stem; long enough to stay in the shroud when adjusted
         line(surf, STEM, (x + side * 28, y + 2), (x, y + 42), 5)
     line(surf, STEM, (x, y + 40), (x, y + 92), 7)
-    rect(surf, ORANGE, (x - 96, y - 3, 68, 7), 3)
-    rect(surf, ORANGE, (x + 28, y - 3, 68, 7), 3)
+    rect(surf, ORANGE, (x - 96, y - 3, 68, 7))
+    rect(surf, ORANGE, (x + 28, y - 3, 68, 7))
     circle(surf, ORANGE, (x, y), 5)
     save(surf, "ai_plane.png")
 
