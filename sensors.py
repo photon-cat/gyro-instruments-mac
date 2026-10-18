@@ -27,7 +27,7 @@ ROLL_SIGN = 1
 
 CAL_SECS = 3          # bias calibration time, keep still
 GRAVITY_TAU = 2.0     # seconds for pitch/roll to settle onto the accelerometer
-BALL_TAU = 0.15       # inclinometer ball damping, seconds
+BALL_TAU = 0.15       # inclinometer ball: approximated fluid damping, seconds
 RATE_TAU = 0.3        # turn rate smoothing, seconds
 MOVED_DPS = 0.2       # gyro noise above this during calibration means it moved
 
@@ -99,8 +99,11 @@ class Imu:
         dt = s.t - self.last_accel_t if self.last_accel_t else 0.0
         self.last_accel_t = s.t
         self.gravity = (s.x, s.y, s.z)
-        # A ball in a curved tube rests where the tube is perpendicular to apparent gravity
+        # A ball in a curved tube rests where the tube is perpendicular to apparent gravity:
+        # the accel vector projected on the X-Z plane, as an angle from straight down (0, 0, -1).
+        # Y (fore-aft) is ignored, as the real tube lies across the aircraft.
         target = ROLL_SIGN * math.degrees(math.atan2(s.x, -s.z))
+        # The fluid damping is approximated as a first-order lag (no overshoot) with time constant BALL_TAU
         self.ball += min(1.0, dt / BALL_TAU) * (target - self.ball)
 
     def _integrate(self, s):

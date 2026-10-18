@@ -30,7 +30,10 @@ $$
 
 The turn coordinator uses two more values:
 - **Turn rate:** the yaw rate $s\,(\omega_z - b)$, smoothed over 0.3 s. The plane symbol reaches the L/R mark at standard rate, 3°/s.
-- **Ball:** the inclinometer ball rests where apparent gravity (gravity plus any sideways acceleration) holds it in its curved tube. So its angle along the tube is `atan2(ax, -az)` from the accelerometer, damped over 0.15 s.
+- **Ball:** the inclinometer ball rests where apparent gravity (gravity plus any sideways acceleration) holds it in its curved tube.
+  - We project the accelerometer vector onto the sensor's X–Z plane (X across the keyboard, Z through the deck) and take its angle from straight down: `atan2(ax, -az)`. Lying flat the vector is (0, 0, −1) g, so the angle is 0° and the ball is centred.
+  - Fore-aft acceleration (Y) is ignored, because a real tube lies across the aircraft, so pitching doesn't move the ball.
+  - **Fluid damping, approximated:** a real ball is slowed by the fluid in its tube, roughly a damped pendulum. Here it's a first-order lag, `ball += (target − ball) · Δt / τ` with τ = 0.15 s, applied on every accelerometer sample (5 ms at 200 Hz). It never overshoots, whereas a real underdamped ball can swing past slightly.
 
 ## Requirements
 
