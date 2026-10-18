@@ -277,7 +277,7 @@ def tc_face():
         line(surf, WHITE, polar(C, CARD_R - 4, deg), polar(C, CARD_R - 26, deg), 5)
     label(surf, "L", 30, WHITE, polar(C, CARD_R - 44, 270 - STD_RATE_BANK - 12))
     label(surf, "R", 30, WHITE, polar(C, CARD_R - 44, 90 + STD_RATE_BANK + 12))
-    label(surf, "TURN COORDINATOR", 17, WHITE, (x, y - 78))
+    label(surf, "TURN AND SLIP", 17, WHITE, (x, y - 78))
     label(surf, "2 MIN", 17, WHITE, (x, y + 58))
     span = BALL_MAX + 4
     tube = [tube_point(d / 2, TUBE_R + 12) for d in range(-2 * span, 2 * span + 1)]
