@@ -8,47 +8,71 @@ An attitude indicator, directional gyro, turn-and-slip indicator and per-axis G 
 
 ## Reading the IMU
 
-The MacBook has a Bosch BMI282 IMU on its always-on sensor hub, which macOS exposes as vendor HID devices. `imu.c` turns streaming on through the sensor's `AppleSPUHIDDriver` properties and queues every report. No root is needed. Python drains the queue through ctypes (`sensors.py`).
+Apple Silicon MacBooks have a Bosch BMI282 IMU (gyro and accelerometer) on the always-on sensor hub, and macOS exposes it as vendor HID devices. It's silent until its `AppleSPUHIDDriver` gets `SensorPropertyReportingState`, `SensorPropertyPowerState` and a `ReportInterval`. Setting the interval back to 0 stops it. No root is needed.
 
-| Sensor | Rate | Values |
-|---|---|---|
-| Gyro | 100 Hz | rotation rate about x, y, z in °/s, plus IMU temperature |
-| Accelerometer | 200 Hz | x, y, z in g (lying flat it reads about (0, 0, -1)) |
+`imu.c` does that and queues every report, and `sensors.py` drains the queue through ctypes. Each sample gives:
+- gyro rates $\omega_x, \omega_y, \omega_z$ in °/s
+- accelerations $a_x, a_y, a_z$ in g (lying flat, about (0, 0, −1))
 
-There's no magnetometer, so heading is relative: set it with the DG's PUSH knob. See [sensors.md](sensors.md) for everything found while probing the hardware.
+Details of the hardware probing are in [sensors.md](sensors.md).
 
-## Computing pitch, roll and yaw
+## How each value is computed
 
-At startup the laptop has to sit still for 3 s while the gyro bias $b$ is measured. After that, each gyro sample updates the angles:
+In the formulas below:
+- $\Delta t$ is the time between samples.
+- $s = \pm1$ is each axis's sign (`HEADING_SIGN`, `PITCH_SIGN`, `ROLL_SIGN` in `sensors.py`).
+- $\text{lag}_\tau(x)$ means a smoothed value $y$ updated toward $x$ by $y \leftarrow y + \frac{\Delta t}{\tau + \Delta t}(x - y)$.
+
+**Rates.** The gyro bias $b$ is each axis's mean over 3 s while the laptop sits still (`C` redoes it):
 
 $$
-\theta_k = \theta_{k-1} + s\,(\omega_k - b)\,\Delta t_k + \frac{\Delta t_k}{\tau + \Delta t_k}\left(\theta^{g}_k - \theta_{k-1}\right)
+\dot\psi = s_\psi(\omega_z - b_z) \quad\text{yaw}, \qquad
+\dot\theta = s_\theta(\omega_x - b_x) \quad\text{pitch}, \qquad
+\dot\phi = s_\phi(\omega_y - b_y) \quad\text{roll}
 $$
 
-- $\omega_k$ is the gyro rate about the axis: yaw about z, pitch about x, roll about y.
-- $\Delta t_k$ is the integration period, the time between gyro samples (about 10 ms at 100 Hz). Gaps longer than 100 ms aren't integrated.
-- $s = \pm 1$ is the axis sign: `HEADING_SIGN`, `PITCH_SIGN` and `ROLL_SIGN` in `sensors.py`.
-- The last term pulls pitch and roll toward the gravity angles $\theta^g$ with a time constant $\tau = 2$ s. It's only applied when the accelerometer reads close to 1 g.
-  - The gravity angles are pitch = `atan2(-ay, -az)` and roll = `atan2(ax, -az)`.
-  - Yaw has no gravity reference, so it skips this term and drifts slowly. Recalibrate with `C`, or realign the card.
+**Turn rate (turn-and-slip).** Standard rate (3°/s) puts the plane on the L/R mark.
 
-The turn coordinator uses two more values:
-- **Turn rate:** the yaw rate $s\,(\omega_z - b)$, smoothed over 0.3 s. The plane symbol reaches the L/R mark at standard rate, 3°/s.
-- **Ball:** the inclinometer ball rests where apparent gravity (gravity plus any sideways acceleration) holds it in its curved tube.
-  - We project the accelerometer vector onto the sensor's X–Z plane (X across the keyboard, Z through the deck) and take its angle from straight down: `atan2(ax, -az)`. Lying flat the vector is (0, 0, −1) g, so the angle is 0° and the ball is centred.
-  - Fore-aft acceleration (Y) is ignored, because a real tube lies across the aircraft, so pitching doesn't move the ball.
-  - **Fluid damping, approximated:** a real ball is slowed by the fluid in its tube, roughly a damped pendulum. Here it's a first-order lag, `ball += (target − ball) · Δt / τ` with τ = 0.15 s, applied on every accelerometer sample (5 ms at 200 Hz). It never overshoots, whereas a real underdamped ball can swing past slightly.
+$$
+r = \text{lag}_{0.3\,\text{s}}(\dot\psi)
+$$
 
-The G meters show the accelerometer on each axis as load factor, which is the negated reading. Lying flat, that's X ≈ 0, Y ≈ 0 and Z ≈ +1 G.
-- At rest the accelerometer measures the desk pushing up (1 G), not a pull of gravity. Any small X/Y reading is desk tilt and sensor offset combined.
-- The needles are smoothed over 0.1 s. Orange tattletales hold the minimum and maximum until you click PUSH.
+**Heading (DG).** There's no magnetometer, so heading has no correction. The HDG knob adds an offset to line it up.
+
+$$
+\psi \leftarrow (\psi + \dot\psi\,\Delta t) \bmod 360°
+$$
+
+**Pitch and roll (AI).** First integrate the gyro, then pull the result toward the accelerometer's gravity angles so it doesn't drift. The pull is applied only while $\lVert a\rVert \approx 1$ g.
+
+$$
+\theta^g = s_\theta\operatorname{atan2}(-a_y, -a_z), \qquad
+\phi^g = s_\phi\operatorname{atan2}(a_x, -a_z)
+$$
+
+$$
+\theta \leftarrow \theta + \dot\theta\,\Delta t, \qquad
+\theta \leftarrow \theta + \frac{\Delta t}{2\,\text{s} + \Delta t}\left(\theta^g - \theta\right)
+\qquad \text{(and the same for } \phi\text{)}
+$$
+
+**Ball (turn-and-slip).** Apparent gravity projected on the X–Z plane, as an angle from straight down, which is where a ball in a curved tube rests. The lag stands in for the damping fluid.
+
+$$
+\beta = \text{lag}_{0.15\,\text{s}}\!\left(s_\phi\operatorname{atan2}(a_x, -a_z)\right)
+$$
+
+**Acceleration (G meters).** Load factor on each axis: the negated reading, so lying flat shows Z = +1 G. At rest that 1 G is the desk pushing up. Orange tattletales hold the min and max until you click PUSH.
+
+$$
+n_i = \text{lag}_{0.1\,\text{s}}(-a_i), \qquad i \in \{x, y, z\}
+$$
 
 ## Requirements
 
-- An Apple Silicon MacBook (developed on a 16" M1 Pro, MacBookPro18,1) running macOS.
-- The Xcode command-line tools, to build `libimu.dylib`: `xcode-select --install`
-- [uv](https://docs.astral.sh/uv/), which installs Python and `pygame-ce` on first run: `brew install uv`
-  - Without uv: `pip install pygame-ce`, then `python compass.py`
+- An Apple Silicon MacBook running macOS
+- The Xcode command-line tools: `xcode-select --install`
+- [uv](https://docs.astral.sh/uv/): `brew install uv`. It installs Python and `pygame-ce` on first run. Without uv, use `pip install pygame-ce`.
 
 ## Run
 
@@ -56,22 +80,16 @@ The G meters show the accelerometer on each axis as load factor, which is the ne
 make run
 ```
 
-| Control | How |
-|---|---|
-| Set heading (turn the DG card) | Click the arrows on the HDG knob (hold to repeat), or scroll over it |
-| Move the heading bug | Click the arrows on the BUG knob, or scroll over it |
-| Reset a G meter's min/max needles | Click its PUSH knob |
-| Recalibrate gyro bias | `C` |
-| Quit | `Q` |
-
-The attitude indicator's pitch scale is fixed for now.
+- **Set heading or the heading bug:** click the arrows on the DG's HDG or BUG knob (hold to repeat), or scroll over the knob.
+- **Reset a G meter's tattletales:** click its PUSH knob.
+- **`C`** recalibrates the gyro bias. **`Q`** quits.
 
 ## Files
 
 | File | Role |
 |---|---|
 | `imu.c` | Streams the gyro and accelerometer: `imu_start`, `imu_read`, `imu_stop` |
-| `sensors.py` | Bias calibration and integration into heading, pitch and roll, plus turn rate, the ball and G per axis |
-| `attitude_indicator.py`, `directional_gyro.py`, `turn_coordinator.py`, `g_meter.py` | The instruments: sensor inputs, plus knob inputs |
+| `sensors.py` | Bias, rates, angles, ball and G per axis (the formulas above) |
+| `attitude_indicator.py`, `directional_gyro.py`, `turn_coordinator.py`, `g_meter.py` | The instruments |
 | `compass.py` | Window, layout, input |
-| `art.py`, `assets/`, `make_assets.py` | Instrument art: loader, PNG layers and the script that draws them (`make assets`) |
+| `art.py`, `assets/`, `make_assets.py` | Instrument art: loader, PNG layers, and the script that draws them |
