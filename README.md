@@ -18,32 +18,29 @@ Details of the hardware probing are in [sensors.md](sensors.md).
 
 ## How each value is computed
 
-In the formulas below:
-- $\Delta t$ is the time between samples.
-- $s = \pm1$ is each axis's sign (`HEADING_SIGN`, `PITCH_SIGN`, `ROLL_SIGN` in `sensors.py`).
-- $\text{lag}_\tau(x)$ means a smoothed value $y$ updated toward $x$ by $y \leftarrow y + \frac{\Delta t}{\tau + \Delta t}(x - y)$.
+$\Delta t$ is the time between samples, $s = \pm1$ is the axis sign, and $\text{lag}_\tau(x)$ smooths toward $x$ with $y \leftarrow y + \frac{\Delta t}{\tau + \Delta t}(x - y)$.
 
-**Rates.** The gyro bias $b$ is each axis's mean over 3 s while the laptop sits still (`C` redoes it):
+**Rates.** $b$ is the gyro bias, measured over 3 s at startup.
 
 $$
-\dot\psi = s_\psi(\omega_z - b_z) \quad\text{yaw}, \qquad
-\dot\theta = s_\theta(\omega_x - b_x) \quad\text{pitch}, \qquad
-\dot\phi = s_\phi(\omega_y - b_y) \quad\text{roll}
+\dot\psi = s_\psi(\omega_z - b_z), \qquad
+\dot\theta = s_\theta(\omega_x - b_x), \qquad
+\dot\phi = s_\phi(\omega_y - b_y)
 $$
 
-**Turn rate (turn-and-slip).** Standard rate (3°/s) puts the plane on the L/R mark.
+**Turn rate.**
 
 $$
 r = \text{lag}_{\text{0.3 s}}(\dot\psi)
 $$
 
-**Heading (DG).** There's no magnetometer, so heading has no correction. The HDG knob adds an offset to line it up.
+**Heading.**
 
 $$
 \psi \leftarrow (\psi + \dot\psi \Delta t) \bmod 360°
 $$
 
-**Pitch and roll (AI).** First integrate the gyro, then pull the result toward the accelerometer's gravity angles so it doesn't drift. The pull is applied only while $\lVert a\rVert \approx 1$ g.
+**Pitch and roll.** Integrate the gyro, then pull toward gravity (only while $\lVert a\rVert \approx 1$ g).
 
 $$
 \theta^g = s_\theta\mathrm{atan2}(-a_y, -a_z), \qquad
@@ -53,16 +50,16 @@ $$
 $$
 \theta \leftarrow \theta + \dot\theta \Delta t, \qquad
 \theta \leftarrow \theta + \frac{\Delta t}{\text{2 s} + \Delta t}\left(\theta^g - \theta\right)
-\qquad \text{(and the same for } \phi\text{)}
+\qquad \text{(same for } \phi\text{)}
 $$
 
-**Ball (turn-and-slip).** Apparent gravity projected on the X–Z plane, as an angle from straight down, which is where a ball in a curved tube rests. The lag stands in for the damping fluid.
+**Ball.** Apparent gravity in the X–Z plane, with the lag standing in for fluid damping.
 
 $$
 \beta = \text{lag}_{\text{0.15 s}}\left(s_\phi\mathrm{atan2}(a_x, -a_z)\right)
 $$
 
-**Acceleration (G meters).** Load factor on each axis: the negated reading, so lying flat shows Z = +1 G. At rest that 1 G is the desk pushing up. Orange tattletales hold the min and max until you click PUSH.
+**G meters.** Load factor per axis.
 
 $$
 n_i = \text{lag}_{\text{0.1 s}}(-a_i), \qquad i \in \lbrace x, y, z \rbrace
@@ -79,10 +76,6 @@ $$
 ```sh
 make run
 ```
-
-- **Set heading or the heading bug:** click the arrows on the DG's HDG or BUG knob (hold to repeat), or scroll over the knob.
-- **Reset a G meter's tattletales:** click its PUSH knob.
-- **`C`** recalibrates the gyro bias. **`Q`** quits.
 
 ## Files
 
