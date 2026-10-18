@@ -19,6 +19,9 @@ slide and stack them. Drawn at 4x and smooth-scaled down for antialiasing.
     tc_plane.png  rear-view plane, banks with turn rate           294 x 294
     tc_ball.png   inclinometer ball                               18 x 18
     tc_glass.png  ball reference lines and bezel                  392 x 392
+    gm_face.png   G meter dial (-3..+3 G), bezel, reset knob      392 x 392
+    gm_needle.png G meter needle with hub, rotates                294 x 294
+    gm_tattle.png min/max tattletale needle, rotates              294 x 294
 
 Run:  uv run make_assets.py
 """
@@ -38,7 +41,8 @@ BOX, CARD_R, BEZEL_R, KNOB_R = 392, 147, 184, 33
 HOLE_R = 104          # bank card hole the pitch tape shows through
 PX_PER_DEG = 2.5      # pitch tape scale
 TAPE_H = 2 * CARD_R + round(180 * PX_PER_DEG)
-KNOBS = {"dg_card": (-158, 158), "dg_bug": (158, 158), "ai_adjust": (-158, 158)}
+KNOBS = {"dg_card": (-158, 158), "dg_bug": (158, 158), "ai_adjust": (-158, 158), "gm_reset": (-158, 158)}
+G_RANGE, G_DEG_PER_G = 3, 45      # G meter: +/- full scale, needle degrees per G (0 G straight up)
 STD_RATE_BANK = 20    # TC plane bank at standard rate (3 deg/s), where the L/R marks sit
 TUBE_C, TUBE_R = (0, -120), 222   # TC ball tube: arc centre (offset from dial centre) and radius
 BALL_R, BALL_MAX = 9, 16          # ball radius, and how far (deg along the arc) it can roll
@@ -308,16 +312,52 @@ def tc_glass():
     save(surf, "tc_glass.png")
 
 
+# ---- G meter
+
+def gm_face():
+    surf = canvas(BOX, BOX)
+    bezel(surf)
+    x, y = C
+    circle(surf, BLACK, C, CARD_R)
+    for tenths in range(-10 * G_RANGE, 10 * G_RANGE + 1, 5):  # a tick every 0.5 G, numbers on whole G
+        g, major = tenths / 10, tenths % 10 == 0
+        a = g * G_DEG_PER_G
+        line(surf, WHITE, polar(C, CARD_R - 4, a), polar(C, CARD_R - (24 if major else 13), a), 3.5 if major else 2)
+        if major:
+            label(surf, f"{g:+.0f}" if g else "0", 34, WHITE, polar(C, CARD_R - 48, a))
+    label(surf, "PUSH TO RESET", 14, (170, 170, 176), (x, y + 108))  # the axis and value are drawn above this
+    static_knob(surf, KNOBS["gm_reset"])
+    save(surf, "gm_face.png")
+
+
+def gm_needle():
+    surf = canvas(2 * CARD_R, 2 * CARD_R)
+    x, y = K
+    poly(surf, WHITE, [(x - 4.5, y + 20), (x + 4.5, y + 20), (x + 2.5, y - 108), (x, y - 128), (x - 2.5, y - 108)])
+    circle(surf, (40, 40, 44), K, 10)
+    circle(surf, (90, 90, 96), K, 10, 2)
+    save(surf, "gm_needle.png")
+
+
+def gm_tattle():
+    surf = canvas(2 * CARD_R, 2 * CARD_R)
+    x, y = K
+    poly(surf, ORANGE, [(x - 3, y), (x + 3, y), (x, y - 120)])
+    save(surf, "gm_tattle.png")
+
+
 def main():
     pygame.init()
     OUT.mkdir(exist_ok=True)
     for old in OUT.glob("*.png"):
         old.unlink()
-    for draw in (case, knob, dg_card, dg_bug, dg_face, ai_tape, ai_card, ai_face, tc_face, tc_plane, tc_ball, tc_glass):
+    for draw in (case, knob, dg_card, dg_bug, dg_face, ai_tape, ai_card, ai_face, tc_face, tc_plane, tc_ball, tc_glass,
+                 gm_face, gm_needle, gm_tattle):
         draw()
     geometry = {"box": BOX, "card_r": CARD_R, "knob_r": KNOB_R, "knobs": KNOBS,
                 "ai": {"px_per_deg": PX_PER_DEG, "horizon_row": TAPE_H // 2},
-                "tc": {"std_rate_bank": STD_RATE_BANK, "tube_c": TUBE_C, "tube_r": TUBE_R, "ball_max": BALL_MAX}}
+                "tc": {"std_rate_bank": STD_RATE_BANK, "tube_c": TUBE_C, "tube_r": TUBE_R, "ball_max": BALL_MAX},
+                "gm": {"range": G_RANGE, "deg_per_g": G_DEG_PER_G}}
     (OUT / "assets.json").write_text(json.dumps(geometry, indent=2) + "\n")
     print(f"wrote {len(list(OUT.glob('*.png')))} layers to {OUT}")
 

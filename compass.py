@@ -2,13 +2,14 @@
 # requires-python = ">=3.10"
 # dependencies = ["pygame-ce"]
 # ///
-"""Attitude indicator, directional gyro and turn coordinator driven by the MacBook's IMU.
+"""Attitude indicator, directional gyro, turn coordinator and per-axis G meters driven by the MacBook's IMU.
 
 Run:  make run   (builds libimu.dylib, then: uv run compass.py)
 
 Controls (Shift = 10x):
     DG HDG knob   click its arrows (hold to repeat), scroll over it, or Left / Right
     DG BUG knob   click its arrows (hold to repeat), scroll over it, or [ / ]
+    G meter PUSH  click to reset the min/max needles
     C recalibrate gyro bias, Q quit
 """
 
@@ -22,12 +23,15 @@ import sensors
 from art import BOX, CARD_R, KNOB_R
 from attitude_indicator import AttitudeIndicator
 from directional_gyro import DirectionalGyro
+from g_meter import GMeter
 from turn_coordinator import TurnCoordinator
 
 GAP = 28
-W, H = 3 * BOX + 4 * GAP, 700
+G_SCALE = 0.62  # G meters are smaller, in a row under the main instruments
+W, H = 3 * BOX + 4 * GAP, 920
 CENTERS = [(GAP + BOX // 2 + i * (BOX + GAP), 150 + BOX // 2) for i in range(3)]
 AI_CENTER, DG_CENTER, TC_CENTER = CENTERS
+G_CENTERS = [(x, 150 + BOX + 20 + round(BOX * G_SCALE) // 2) for x, _ in CENTERS]
 REPEAT_DELAY, REPEAT_EVERY = 0.4, 0.06  # s, holding a knob arrow
 
 BG = (18, 20, 24)
@@ -88,7 +92,7 @@ def draw_status(screen, fonts, imu, card_set_at):
     pygame.draw.circle(screen, color, (rect.left - 18, rect.centery), 7)
     screen.blit(surf, rect)
     hints = ("DG knobs: click the arrows (hold to repeat) or scroll · keys Left/Right heading, [ ] bug (Shift = 10°)",
-             "C recalibrate   ·   Q quit")
+             "G meters: click PUSH to reset min/max   ·   C recalibrate   ·   Q quit")
     for i, line in enumerate(hints):
         text(screen, fonts["hint"], line, DIM, (W // 2, H - 52 + i * 24))
 
@@ -102,6 +106,7 @@ def main():
     fonts = {"readout": pygame.font.Font(None, 84), "title": pygame.font.Font(None, 44),
              "small": pygame.font.Font(None, 26), "hint": pygame.font.Font(None, 21)}
     ai, dg, tc = AttitudeIndicator(), DirectionalGyro(), TurnCoordinator()
+    g_meters = [GMeter(axis, G_SCALE) for axis in "XYZ"]
     imu = sensors.Imu()
     card_set_at = time.monotonic()
     clock = pygame.time.Clock()
@@ -135,6 +140,9 @@ def main():
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_c:
                 imu.calibrate()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                for gm, center in zip(g_meters, G_CENTERS):
+                    if math.dist(event.pos, gm.knob_at(center)) <= KNOB_R * G_SCALE:
+                        gm.reset()
                 at, turn = knob_under(event.pos)
                 if turn:  # left half of the knob turns left, right half turns right
                     degrees = step if event.pos[0] >= at[0] else -step
@@ -154,10 +162,12 @@ def main():
         ai.pitch, ai.roll = imu.pitch, imu.roll
         dg.heading = imu.heading
         tc.turn_rate, tc.ball = imu.turn_rate, imu.ball
+        for gm, g in zip(g_meters, imu.g):
+            gm.read(g)
 
         screen.fill(BG)
         draw_readouts(screen, fonts, ai, dg, tc)
-        for instrument, center in zip((ai, dg, tc), CENTERS):
+        for instrument, center in zip((ai, dg, tc, *g_meters), CENTERS + G_CENTERS):
             instrument.draw(screen, center)
         if imu.calibrating:
             draw_calibrating(screen, fonts, imu)
@@ -165,6 +175,9 @@ def main():
         pygame.display.flip()
         clock.tick(60)
 
+        if imu.calibrating:  # don't let the bias measurement's start-up count as a peak
+            for gm in g_meters:
+                gm.reset()
         if screenshot and not imu.calibrating and time.monotonic() - imu.cal_started > sensors.CAL_SECS + 1:
             pygame.image.save(screen, screenshot)
             running = False

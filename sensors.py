@@ -29,6 +29,7 @@ CAL_SECS = 3          # bias calibration time, keep still
 GRAVITY_TAU = 2.0     # seconds for pitch/roll to settle onto the accelerometer
 BALL_TAU = 0.15       # inclinometer ball: approximated fluid damping, seconds
 RATE_TAU = 0.3        # turn rate smoothing, seconds
+G_TAU = 0.1           # G meter smoothing, seconds
 MOVED_DPS = 0.2       # gyro noise above this during calibration means it moved
 
 
@@ -51,6 +52,7 @@ class Imu:
         self.heading = self.pitch = self.roll = 0.0  # degrees
         self.turn_rate = 0.0                          # deg/s, positive = heading increasing (smoothed)
         self.ball = 0.0                               # inclinometer ball, deg along its tube, + = right
+        self.g = (0.0, 0.0, 1.0)                      # load factor per axis (smoothed), +1 G on z lying flat
         self.temp = 0.0                               # IMU temperature, degC
         self.gravity = (0.0, 0.0, -1.0)               # latest accelerometer reading, g
         self.bias = (0.0, 0.0, 0.0)
@@ -99,6 +101,9 @@ class Imu:
         dt = s.t - self.last_accel_t if self.last_accel_t else 0.0
         self.last_accel_t = s.t
         self.gravity = (s.x, s.y, s.z)
+        # Load factor is the negated reading, so lying flat shows +1 G on z
+        k = min(1.0, dt / G_TAU)
+        self.g = tuple(old + k * (-new - old) for old, new in zip(self.g, self.gravity))
         # A ball in a curved tube rests where the tube is perpendicular to apparent gravity:
         # the accel vector projected on the X-Z plane, as an angle from straight down (0, 0, -1).
         # Y (fore-aft) is ignored, as the real tube lies across the aircraft.

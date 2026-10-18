@@ -1,6 +1,6 @@
 # macbook-compass
 
-An attitude indicator, directional gyro and turn coordinator driven by the MacBook's own motion sensor.
+An attitude indicator, directional gyro, turn coordinator and per-axis G meters driven by the MacBook's own motion sensor.
 
 ## Reading the IMU
 
@@ -35,6 +35,10 @@ The turn coordinator uses two more values:
   - Fore-aft acceleration (Y) is ignored, because a real tube lies across the aircraft, so pitching doesn't move the ball.
   - **Fluid damping, approximated:** a real ball is slowed by the fluid in its tube, roughly a damped pendulum. Here it's a first-order lag, `ball += (target − ball) · Δt / τ` with τ = 0.15 s, applied on every accelerometer sample (5 ms at 200 Hz). It never overshoots, whereas a real underdamped ball can swing past slightly.
 
+The G meters show the accelerometer on each axis as load factor, which is the negated reading. Lying flat, that's X ≈ 0, Y ≈ 0 and Z ≈ +1 G.
+- At rest the accelerometer measures the desk pushing up (1 G), not a pull of gravity. Any small X/Y reading is desk tilt and sensor offset combined.
+- The needles are smoothed over 0.1 s. Orange tattletales hold the minimum and maximum until you click PUSH.
+
 ## Requirements
 
 - An Apple Silicon MacBook (developed on a 16" M1 Pro, MacBookPro18,1) running macOS.
@@ -52,6 +56,7 @@ make run
 |---|---|---|
 | Set heading (turn the DG card) | Click the arrows on the HDG knob (hold to repeat), or scroll over it | ← / → |
 | Move the heading bug | Click the arrows on the BUG knob, or scroll over it | `[` / `]` |
+| Reset a G meter's min/max needles | Click its PUSH knob | |
 | Recalibrate gyro bias | | `C` |
 | Quit | | `Q` |
 
@@ -62,7 +67,7 @@ Hold Shift for 10° steps. The attitude indicator's pitch scale is fixed for now
 | File | Role |
 |---|---|
 | `imu.c` | Streams the gyro and accelerometer: `imu_start`, `imu_read`, `imu_stop` |
-| `sensors.py` | Bias calibration and integration into heading, pitch and roll, plus turn rate and the ball |
-| `attitude_indicator.py`, `directional_gyro.py`, `turn_coordinator.py` | The instruments: sensor inputs, plus the DG's knob inputs |
+| `sensors.py` | Bias calibration and integration into heading, pitch and roll, plus turn rate, the ball and G per axis |
+| `attitude_indicator.py`, `directional_gyro.py`, `turn_coordinator.py`, `g_meter.py` | The instruments: sensor inputs, plus knob inputs |
 | `compass.py` | Window, layout, input |
 | `art.py`, `assets/`, `make_assets.py` | Instrument art: loader, PNG layers and the script that draws them (`make assets`) |
