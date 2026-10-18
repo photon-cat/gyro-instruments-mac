@@ -6,10 +6,9 @@
 
 Run:  make run   (builds libimu.dylib, then: uv run compass.py)
 
-Controls (Shift = 10x):
-    DG HDG knob   click its arrows (hold to repeat), scroll over it, or Left / Right
-    DG BUG knob   click its arrows (hold to repeat), scroll over it, or [ / ]
-    G meter PUSH  click to reset the min/max needles
+Controls:
+    DG HDG / BUG knobs  click the arrows (hold to repeat) or scroll over them
+    G meter PUSH        click to reset the min/max needles
     C recalibrate gyro bias, Q quit
 """
 
@@ -91,10 +90,7 @@ def draw_status(screen, fonts, imu, card_set_at):
     rect = surf.get_rect(center=(W // 2 + 10, H - 100))
     pygame.draw.circle(screen, color, (rect.left - 18, rect.centery), 7)
     screen.blit(surf, rect)
-    hints = ("DG knobs: click the arrows (hold to repeat) or scroll · keys Left/Right heading, [ ] bug (Shift = 10°)",
-             "G meters: click PUSH to reset min/max   ·   C recalibrate   ·   Q quit")
-    for i, line in enumerate(hints):
-        text(screen, fonts["hint"], line, DIM, (W // 2, H - 52 + i * 24))
+    text(screen, fonts["hint"], "C recalibrate   ·   Q quit", DIM, (W // 2, H - 52))
 
 
 def main():
@@ -118,8 +114,6 @@ def main():
 
     knobs = [((DG_CENTER[0] + dx, DG_CENTER[1] + dy), turn)
              for (dx, dy), turn in ((DirectionalGyro.KNOBS["card"], turn_card), (DirectionalGyro.KNOBS["bug"], dg.turn_bug))]
-    keys = {pygame.K_LEFT: (turn_card, -1), pygame.K_RIGHT: (turn_card, 1),
-            pygame.K_LEFTBRACKET: (dg.turn_bug, -1), pygame.K_RIGHTBRACKET: (dg.turn_bug, 1)}
 
     def knob_under(pos):
         for at, turn in knobs:
@@ -130,13 +124,9 @@ def main():
     held = None  # (turn, degrees, next repeat time) while a knob arrow is held down
     running = True
     while running:
-        step = 10 if pygame.key.get_mods() & pygame.KMOD_SHIFT else 1
         for event in pygame.event.get():
-            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key in (pygame.K_q, pygame.K_ESCAPE)):
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_q):
                 running = False
-            elif event.type == pygame.KEYDOWN and event.key in keys:
-                turn, direction = keys[event.key]
-                turn(direction * step)
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_c:
                 imu.calibrate()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -145,7 +135,7 @@ def main():
                         gm.reset()
                 at, turn = knob_under(event.pos)
                 if turn:  # left half of the knob turns left, right half turns right
-                    degrees = step if event.pos[0] >= at[0] else -step
+                    degrees = 1 if event.pos[0] >= at[0] else -1
                     turn(degrees)
                     held = (turn, degrees, time.monotonic() + REPEAT_DELAY)
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
@@ -153,7 +143,7 @@ def main():
             elif event.type == pygame.MOUSEWHEEL and event.y:
                 at, turn = knob_under(pygame.mouse.get_pos())
                 if turn:
-                    turn(math.copysign(step, event.y))
+                    turn(math.copysign(1, event.y))
         if held and time.monotonic() >= held[2]:
             held[0](held[1])
             held = (held[0], held[1], time.monotonic() + REPEAT_EVERY)

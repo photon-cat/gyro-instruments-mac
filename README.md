@@ -52,15 +52,15 @@ The G meters show the accelerometer on each axis as load factor, which is the ne
 make run
 ```
 
-| Control | Mouse | Keys |
-|---|---|---|
-| Set heading (turn the DG card) | Click the arrows on the HDG knob (hold to repeat), or scroll over it | ← / → |
-| Move the heading bug | Click the arrows on the BUG knob, or scroll over it | `[` / `]` |
-| Reset a G meter's min/max needles | Click its PUSH knob | |
-| Recalibrate gyro bias | | `C` |
-| Quit | | `Q` |
+| Control | How |
+|---|---|
+| Set heading (turn the DG card) | Click the arrows on the HDG knob (hold to repeat), or scroll over it |
+| Move the heading bug | Click the arrows on the BUG knob, or scroll over it |
+| Reset a G meter's min/max needles | Click its PUSH knob |
+| Recalibrate gyro bias | `C` |
+| Quit | `Q` |
 
-Hold Shift for 10° steps. The attitude indicator's pitch scale is fixed for now.
+The attitude indicator's pitch scale is fixed for now.
 
 ## Files
 
